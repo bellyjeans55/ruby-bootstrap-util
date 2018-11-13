@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# Simple script to install ruby/rails/puma on an Amazon Linux 2 server.
+
+#!/bin/bash
+
+while test $# != 0
+do
+  case "$1" in
+    --host|--hostname|-h) DEST_HOST=$2; shift ;;
+    --user|--username|-u) USERNAME=$2; shift ;;
+    --key|--keyfile|-k) KEYFILE=$2; shift ;;
+    --help) echo "Available flags:";
+            echo "--host|-h"
+            echo "--user|-u";
+            echo "--key|-k"; ;;
+    *) echo "Usage: ./amznlinux-bootstrap --host hostname --user username --key location";
+       exit -1 ;;
+  esac
+  shift
+done
+
+CONTINUE=true
+if [ -z "$DEST_HOST" ]; then
+  echo "Please enter a hostname with --host"
+  CONTINUE=false
+fi
+if [ -z "$USERNAME" ]; then
+  echo "Please enter a username with --user"
+  CONTINUE=false
+fi
+if [ -z "$KEYFILE" ]; then
+  echo "Please enter an SSH key location with --key"
+  CONTINUE=false
+fi
+if [ "$CONTINUE" = false ]; then
+  exit -1
+fi
+
+#Begin install RVM SSH Session
+ssh -i $KEYFILE $USERNAME@$DEST_HOST << END
+
+#Install prerequisites
+sudo yum install -y gcc openssl-devel libyaml-devel libffi-devel readline-devel zlib-devel gdbm-devel ncurses-devel ruby-devel gcc-c++ jq git patch
+
+#Install RVM
+sudo gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
+curl -sSL https://get.rvm.io | sudo bash -s stable
+sudo usermod -a -G rvm \`whoami\`
+
+END
+
+#Begin install Ruby+Puma+Rails SSH Session
+ssh -i $KEYFILE $USERNAME@$DEST_HOST << END
+#Install ruby
+rvm install ruby
+
+#Install rails
+gem install rails
+
+#Install puma
+gem install puma
+
+END
